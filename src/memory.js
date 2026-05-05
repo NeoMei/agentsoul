@@ -6,6 +6,7 @@ const AGENTSOUL_DIR = path.join(os.homedir(), '.agentsoul');
 const MEMORY_DB = path.join(AGENTSOUL_DIR, 'memory.db');
 
 let dbInstance = null;
+let dbFailed = false;
 
 function ensureDir(dir) {
   if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
@@ -13,6 +14,7 @@ function ensureDir(dir) {
 
 async function getDb() {
   if (dbInstance) return dbInstance;
+  if (dbFailed) return null;
 
   try {
     const { default: Database } = await import('better-sqlite3');
@@ -29,7 +31,7 @@ async function getDb() {
     `);
     return dbInstance;
   } catch (e) {
-    console.error('[AgentSoul] Failed to open memory.db:', e.message);
+    dbFailed = true;
     return null;
   }
 }
@@ -41,8 +43,8 @@ export async function saveConversation(sessionId, role, content) {
     db.prepare(
       'INSERT INTO conversations (session_id, role, content, timestamp) VALUES (?, ?, ?, ?)'
     ).run(sessionId || null, role, content, Math.floor(Date.now() / 1000));
-  } catch (e) {
-    console.error('[AgentSoul] Failed to save conversation:', e.message);
+  } catch {
+    // Silently skip on failure to avoid breaking TUI/serve output
   }
 }
 
