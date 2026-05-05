@@ -5,7 +5,7 @@ Give OpenCode a soul — personality injection and long-term memory for your AI 
 ## Installation
 
 ```bash
-npm install -g agentsoul
+npm install -g @neomei/agentsoul
 ```
 
 ## Quick Start
@@ -49,8 +49,9 @@ AgentSoul injects personality files into every OpenCode session:
    - Recent memories are automatically injected into new sessions
 
 3. **OpenCode Plugin** — Registered in `~/.config/opencode/opencode.json`
-   - Hooks into `tool.execute.before` to inject soul on session creation
-   - Hooks into `session.error` to re-inject after context compaction
+   - Hooks into `experimental.chat.system.transform` to inject soul before every LLM call
+   - Hooks into `chat.message` to persist user messages
+   - Survives context compaction automatically
 
 ## Configuration
 
