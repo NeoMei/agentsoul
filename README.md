@@ -75,6 +75,40 @@ After `agentsoul setup`, edit the files directly:
 ~/.agentsoul/soul/USER.md       # User relationship
 ```
 
+## Integration with OpenCode Feishu
+
+AgentSoul works with [@neomei/opencode-feishu](https://www.npmjs.com/package/@neomei/opencode-feishu) to give your Feishu bot a soul.
+
+**Prerequisite**: Both plugins must be registered in `~/.config/opencode/opencode.json`:
+
+```json
+{
+  "plugin": [
+    "@neomei/agentsoul",
+    "@neomei/opencode-feishu"
+  ]
+}
+```
+
+**Setup**:
+
+```bash
+# 1. Configure AgentSoul personality
+agentsoul setup
+
+# 2. Configure Feishu connection
+npx @neomei/opencode-feishu setup
+
+# 3. Start OpenCode serve with both plugins loaded
+opencode serve --port 19876
+```
+
+When a Feishu user sends a message, OpenCode processes it through both plugins:
+- **AgentSoul** injects personality into the system prompt
+- **opencode-feishu** handles the Feishu WebSocket and message formatting
+
+Memory (conversation history) is persisted automatically.
+
 ## Architecture
 
 ```
