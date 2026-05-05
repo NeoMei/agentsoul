@@ -1,6 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
+import { createRequire } from 'module';
 
 const AGENTSOUL_DIR = path.join(os.homedir(), '.agentsoul');
 const MEMORY_DB = path.join(AGENTSOUL_DIR, 'memory.db');
@@ -10,6 +11,48 @@ let dbFailed = false;
 
 function ensureDir(dir) {
   if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+}
+
+async function tryLoadBetterSqlite3() {
+  // Attempt 1: standard import from current context
+  try {
+    return await import('better-sqlite3');
+  } catch {
+    // Fall through
+  }
+
+  // Attempt 2: resolve from the host process (opencode) context
+  try {
+    const hostEntry = process.argv[1];
+    if (hostEntry && hostEntry.endsWith('.js')) {
+      const req = createRequire(hostEntry);
+      const resolved = req.resolve('better-sqlite3');
+      return await import(resolved);
+    }
+  } catch {
+    // Fall through
+  }
+
+  // Attempt 3: common global opencode locations
+  const candidates = [
+    path.join(os.homedir(), '.npm-global/lib/node_modules/opencode/package.json'),
+    path.join(os.homedir(), '.local/lib/node_modules/opencode/package.json'),
+    '/usr/local/lib/node_modules/opencode/package.json',
+    '/usr/lib/node_modules/opencode/package.json',
+  ];
+  for (const c of candidates) {
+    try {
+      if (fs.existsSync(c)) {
+        const req = createRequire(c);
+        const resolved = req.resolve('better-sqlite3');
+        return await import(resolved);
+      }
+    } catch {
+      // Continue
+    }
+  }
+
+  return null;
 }
 
 async function getDb() {
@@ -23,7 +66,12 @@ async function getDb() {
   console.error = () => {};
 
   try {
-    const { default: Database } = await import('better-sqlite3');
+    const mod = await tryLoadBetterSqlite3();
+    if (!mod) {
+      dbFailed = true;
+      return null;
+    }
+    const Database = mod.default;
     ensureDir(path.dirname(MEMORY_DB));
     dbInstance = new Database(MEMORY_DB);
     dbInstance.exec(`
