@@ -8,6 +8,22 @@ Give OpenCode a soul — personality injection and long-term memory for your AI 
 npm install -g @neomei/agentsoul
 ```
 
+如果安装后提示 `command not found: agentsoul`，说明 npm 全局 bin 目录不在 PATH 中。请配置 npm 全局路径：
+
+```bash
+mkdir -p ~/.npm-global
+npm config set prefix '~/.npm-global'
+echo 'export PATH=~/.npm-global/bin:$PATH' >> ~/.bashrc
+source ~/.bashrc
+```
+
+或使用 `npx` 直接运行（无需全局安装）：
+
+```bash
+npx @neomei/agentsoul setup
+npx @neomei/agentsoul chat
+```
+
 ## Quick Start
 
 ```bash

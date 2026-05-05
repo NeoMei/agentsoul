@@ -51,6 +51,9 @@ export async function cli(args) {
     case 'memory':
       await cmdMemory(args.slice(1));
       break;
+    case 'doctor':
+      await cmdDoctor();
+      break;
     default:
       console.log(`
 AgentSoul — Give OpenCode a soul
@@ -62,6 +65,7 @@ Usage:
   agentsoul run [message]    Single-shot with soul injection
   agentsoul serve            Headless server with soul injection
   agentsoul memory [cmd]     Memory management (list/search/clear)
+  agentsoul doctor           Diagnose installation issues
 `);
   }
 }
@@ -384,4 +388,49 @@ async function cmdMemory(args) {
   } catch (e) {
     console.error('[AgentSoul] Memory error:', e.message);
   }
+}
+
+async function cmdDoctor() {
+  console.log('\n=== AgentSoul Doctor ===\n');
+
+  // 1. Check npm global path
+  const npmPrefix = process.env.npm_config_prefix || '';
+  const globalBin = path.join(os.homedir(), '.npm-global', 'bin');
+  const pathEnv = process.env.PATH || '';
+  const inPath = pathEnv.includes(globalBin) || pathEnv.includes(npmPrefix);
+
+  console.log('PATH contains npm global bin:', inPath ? 'OK' : 'MISSING');
+  if (!inPath) {
+    console.log('  Fix: npm config set prefix "~/.npm-global"');
+    console.log('       echo \'export PATH=~/.npm-global/bin:$PATH\' >> ~/.bashrc');
+  }
+
+  // 2. Check if opencode config has plugin
+  const configPath = path.join(os.homedir(), '.config', 'opencode', 'opencode.json');
+  let pluginOk = false;
+  if (fs.existsSync(configPath)) {
+    try {
+      const cfg = JSON.parse(fs.readFileSync(configPath, 'utf-8'));
+      const plugins = cfg.plugin || cfg.plugins || [];
+      pluginOk = plugins.includes(PLUGIN_NAME);
+      console.log('Plugin registered in opencode:', pluginOk ? 'OK' : 'MISSING');
+    } catch {
+      console.log('Plugin registered in opencode: INVALID CONFIG');
+    }
+  } else {
+    console.log('Plugin registered in opencode: NO CONFIG');
+  }
+
+  // 3. Check soul files
+  const soulDir = path.join(os.homedir(), '.agentsoul', 'soul');
+  const hasIdentity = fs.existsSync(path.join(soulDir, 'IDENTITY.md'));
+  const hasSoul = fs.existsSync(path.join(soulDir, 'SOUL.md'));
+  const hasUser = fs.existsSync(path.join(soulDir, 'USER.md'));
+  console.log('Soul files:', hasIdentity && hasSoul && hasUser ? 'OK' : 'INCOMPLETE');
+
+  // 4. Check memory db
+  const hasDb = fs.existsSync(path.join(os.homedir(), '.agentsoul', 'memory.db'));
+  console.log('Memory database:', hasDb ? 'OK' : 'NOT FOUND');
+
+  console.log('\nTip: Use "npx @neomei/agentsoul <command>" if global install fails\n');
 }
