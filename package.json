@@ -28,6 +28,14 @@
     "templates/",
     "README.md"
   ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/NeoMei/agentsoul.git"
+  },
+  "bugs": {
+    "url": "https://github.com/NeoMei/agentsoul/issues"
+  },
+  "homepage": "https://github.com/NeoMei/agentsoul#readme",
   "license": "MIT",
   "engines": {
     "node": ">=18.0.0"
