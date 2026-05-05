@@ -11,13 +11,10 @@ npm install -g @neomei/agentsoul
 ## Quick Start
 
 ```bash
-# 1. Register AgentSoul as an OpenCode plugin
-agentsoul install
-
-# 2. Configure your agent's personality
+# 1. Configure your agent's personality (auto-registers plugin)
 agentsoul setup
 
-# 3. Launch OpenCode with soul injection
+# 2. Launch OpenCode with soul injection
 agentsoul chat
 ```
 
@@ -25,8 +22,7 @@ agentsoul chat
 
 | Command | Description |
 |---------|-------------|
-| `agentsoul install` | Register plugin in `~/.config/opencode/opencode.json` |
-| `agentsoul setup` | Interactive configuration wizard (incremental) |
+| `agentsoul setup` | Interactive configuration wizard (auto-registers plugin) |
 | `agentsoul chat` | Launch OpenCode TUI with soul injection |
 | `agentsoul run <message>` | Single-shot with soul injection |
 | `agentsoul serve [port]` | Headless server with soul injection |

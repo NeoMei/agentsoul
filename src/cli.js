@@ -33,9 +33,6 @@ export async function cli(args) {
   const cmd = args[0] || 'help';
 
   switch (cmd) {
-    case 'install':
-      await cmdInstall();
-      break;
     case 'uninstall':
       await cmdUninstall();
       break;
@@ -59,9 +56,8 @@ export async function cli(args) {
 AgentSoul — Give OpenCode a soul
 
 Usage:
-  agentsoul install          Register plugin in opencode config
+  agentsoul setup            Interactive configuration wizard (auto-registers plugin)
   agentsoul uninstall        Remove plugin from opencode config
-  agentsoul setup            Interactive configuration wizard (incremental)
   agentsoul chat             Launch opencode TUI with soul injection
   agentsoul run [message]    Single-shot with soul injection
   agentsoul serve            Headless server with soul injection
@@ -149,6 +145,22 @@ async function cmdUninstall() {
 
 async function cmdSetup() {
   const soulDir = ensureSoulDir();
+
+  // Auto-register plugin if not already in opencode config
+  const configPath = path.join(os.homedir(), '.config', 'opencode', 'opencode.json');
+  let pluginRegistered = false;
+  if (fs.existsSync(configPath)) {
+    try {
+      const cfg = JSON.parse(fs.readFileSync(configPath, 'utf-8'));
+      const plugins = cfg.plugin || cfg.plugins || [];
+      pluginRegistered = plugins.includes(PLUGIN_NAME);
+    } catch {}
+  }
+  if (!pluginRegistered) {
+    console.log('[AgentSoul] Plugin not registered, installing...\n');
+    await cmdInstall();
+  }
+
   const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
   const ask = (q, def) =>
     new Promise((resolve) => {
