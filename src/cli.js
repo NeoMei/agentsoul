@@ -29,8 +29,23 @@ async function injectSoul() {
   return soul + memories;
 }
 
+function getVersion() {
+  try {
+    const pkgPath = path.join(__dirname, '..', 'package.json');
+    const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf-8'));
+    return pkg.version;
+  } catch {
+    return 'unknown';
+  }
+}
+
 export async function cli(args) {
   const cmd = args[0] || 'help';
+
+  if (cmd === '-v' || cmd === '--version') {
+    console.log(getVersion());
+    return;
+  }
 
   switch (cmd) {
     case 'uninstall':

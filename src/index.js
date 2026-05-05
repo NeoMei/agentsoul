@@ -12,28 +12,43 @@ export default function AgentSoulPlugin(ctx) {
     // Inject soul into system prompt on every LLM call.
     // This hook fires before each model request, so soul survives context compaction.
     'experimental.chat.system.transform': async (input, output) => {
-      const soulText = loadSoul();
-      if (!soulText || !output?.system) return;
+      try {
+        const soulText = loadSoul();
+        if (!soulText || !output?.system) return;
 
-      const alreadyInjected = output.system.some(
-        (s) => typeof s === 'string' && s.includes(SOUL_MARKER)
-      );
+        // Defensive: ensure system is an array
+        if (!Array.isArray(output.system)) {
+          output.system = [soulText];
+          return;
+        }
 
-      if (!alreadyInjected) {
-        output.system.push(soulText);
+        const alreadyInjected = output.system.some(
+          (s) => typeof s === 'string' && s.includes(SOUL_MARKER)
+        );
+
+        if (!alreadyInjected) {
+          output.system.push(soulText);
+        }
+      } catch {
+        // Silently ignore any errors to avoid breaking TUI/serve
       }
     },
 
     // Save user messages when they are created
     'chat.message': async (input, output) => {
-      if (output?.parts) {
+      try {
+        if (!output?.parts || !Array.isArray(output.parts)) return;
+
         const textParts = output.parts
-          .filter((p) => p.type === 'text' && !p.synthetic)
+          .filter((p) => p && p.type === 'text' && !p.synthetic)
           .map((p) => p.text || '')
           .join('\n');
+
         if (textParts.trim()) {
           await saveConversation(input.sessionID, 'user', textParts.trim());
         }
+      } catch {
+        // Silently ignore to avoid breaking TUI/serve output
       }
     },
 
