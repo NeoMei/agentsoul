@@ -5,7 +5,7 @@
   "main": "src/index.js",
   "type": "module",
   "bin": {
-    "agentsoul": "./bin/agentsoul"
+    "agentsoul": "bin/agentsoul"
   },
   "scripts": {
     "postinstall": "node scripts/postinstall.js",
