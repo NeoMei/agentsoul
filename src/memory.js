@@ -14,14 +14,9 @@ function ensureDir(dir) {
 }
 
 async function tryLoadBetterSqlite3() {
-  // Attempt 1: standard import from current context
-  try {
-    return await import('better-sqlite3');
-  } catch {
-    // Fall through
-  }
-
-  // Attempt 2: resolve from the host process (opencode) context
+  // Resolve better-sqlite3 from the host process (opencode) context.
+  // AgentSoul does not declare better-sqlite3 as its own dependency;
+  // it reuses the one already installed by opencode.
   try {
     const hostEntry = process.argv[1];
     if (hostEntry && hostEntry.endsWith('.js')) {
@@ -33,7 +28,7 @@ async function tryLoadBetterSqlite3() {
     // Fall through
   }
 
-  // Attempt 3: common global opencode locations
+  // Fallback: common global opencode locations
   const candidates = [
     path.join(os.homedir(), '.npm-global/lib/node_modules/opencode/package.json'),
     path.join(os.homedir(), '.local/lib/node_modules/opencode/package.json'),
