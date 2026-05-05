@@ -39,9 +39,6 @@ export async function cli(args) {
     case 'uninstall':
       await cmdUninstall();
       break;
-    case 'init':
-      await cmdInit();
-      break;
     case 'setup':
       await cmdSetup();
       break;
@@ -64,8 +61,7 @@ AgentSoul — Give OpenCode a soul
 Usage:
   agentsoul install          Register plugin in opencode config
   agentsoul uninstall        Remove plugin from opencode config
-  agentsoul init             Create soul template files
-  agentsoul setup            Interactive configuration wizard
+  agentsoul setup            Interactive configuration wizard (incremental)
   agentsoul chat             Launch opencode TUI with soul injection
   agentsoul run [message]    Single-shot with soul injection
   agentsoul serve            Headless server with soul injection
@@ -151,48 +147,83 @@ async function cmdUninstall() {
   }
 }
 
-async function cmdInit() {
-  const soulDir = ensureSoulDir();
-  const templatesDir = path.join(__dirname, '..', 'templates');
-  const files = ['IDENTITY.md', 'SOUL.md', 'USER.md'];
-  for (const f of files) {
-    const src = path.join(templatesDir, f);
-    const dst = path.join(soulDir, f);
-    if (!fs.existsSync(dst) && fs.existsSync(src)) {
-      fs.copyFileSync(src, dst);
-      console.log(`[AgentSoul] Created ${dst}`);
-    }
-  }
-  console.log('[AgentSoul] Run "agentsoul setup" to personalize your agent');
-}
-
 async function cmdSetup() {
   const soulDir = ensureSoulDir();
   const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
-  const ask = (q) => new Promise((resolve) => rl.question(q, resolve));
+  const ask = (q, def) =>
+    new Promise((resolve) => {
+      const prompt = def !== undefined && def !== '' ? `${q} [${def}]: ` : `${q}: `;
+      rl.question(prompt, (ans) => resolve(ans.trim() || def));
+    });
 
-  console.log('\n=== AgentSoul Configuration ===\n');
+  console.log('\n=== AgentSoul Configuration ===');
+  console.log('(Press Enter to keep current value)\n');
 
-  const name = await ask('Agent name (e.g. Diandian): ') || 'Agent';
-  const age = await ask('Agent age (e.g. 22): ') || '';
-  const gender = await ask('Agent gender (e.g. female): ') || '';
-  const personality = await ask('Personality in one sentence: ') || 'friendly and helpful';
-  const userName = await ask('Your name (how agent addresses you): ') || 'User';
-  const relationship = await ask('Relationship (e.g. colleague, friend, lover): ') || 'friend';
+  // Read existing files
+  const identityPath = path.join(soulDir, 'IDENTITY.md');
+  const userPath = path.join(soulDir, 'USER.md');
+  const soulPath = path.join(soulDir, 'SOUL.md');
+
+  const identityContent = fs.existsSync(identityPath) ? fs.readFileSync(identityPath, 'utf-8') : '';
+  const userContent = fs.existsSync(userPath) ? fs.readFileSync(userPath, 'utf-8') : '';
+  const soulContent = fs.existsSync(soulPath) ? fs.readFileSync(soulPath, 'utf-8') : '';
+
+  // Parse current values (skip bracket placeholders like [Your Name])
+  const parseField = (content, fieldName) => {
+    const match = content.match(new RegExp(`- \\*\\*${fieldName}\\*\\*: (.*)`, 'm'));
+    if (!match) return '';
+    const val = match[1].trim();
+    if (val.startsWith('[') && val.endsWith(']')) return '';
+    return val;
+  };
+
+  const defaults = {
+    name: parseField(identityContent, 'Name') || 'Agent',
+    age: parseField(identityContent, 'Age') || '22',
+    gender: parseField(identityContent, 'Gender') || 'female',
+    personality: parseField(identityContent, 'Personality') || 'warm, thoughtful, and independent',
+    userName: parseField(userContent, 'Name') || 'User',
+    relationship: parseField(userContent, 'Relationship') || 'friend',
+  };
+
+  const name = await ask('Agent name', defaults.name);
+  const age = await ask('Agent age', defaults.age);
+  const gender = await ask('Agent gender', defaults.gender);
+  const personality = await ask('Personality in one sentence', defaults.personality);
+  const userName = await ask('Your name (how agent addresses you)', defaults.userName);
+  const relationship = await ask('Relationship (e.g. colleague, friend, lover)', defaults.relationship);
 
   rl.close();
 
-  // Write IDENTITY.md
-  fs.writeFileSync(path.join(soulDir, 'IDENTITY.md'), `# IDENTITY.md
+  // Helper: replace existing field or append if missing
+  const upsertField = (content, fieldName, value) => {
+    const regex = new RegExp(`(- \\*\\*${fieldName}\\*\\*: ).*`, 'm');
+    if (regex.test(content)) {
+      return content.replace(regex, `$1${value}`);
+    }
+    return content.trimEnd() + `\n- **${fieldName}**: ${value}`;
+  };
 
-- **Name**: ${name}
-- **Age**: ${age}
-- **Gender**: ${gender}
-- **Personality**: ${personality}
-`);
+  // Update IDENTITY.md
+  let newIdentity = identityContent.trim() ? identityContent : '# IDENTITY.md\n';
+  newIdentity = upsertField(newIdentity, 'Name', name);
+  newIdentity = upsertField(newIdentity, 'Age', age);
+  newIdentity = upsertField(newIdentity, 'Gender', gender);
+  newIdentity = upsertField(newIdentity, 'Personality', personality);
+  fs.writeFileSync(identityPath, newIdentity.trim() + '\n');
 
-  // Write SOUL.md
-  fs.writeFileSync(path.join(soulDir, 'SOUL.md'), `# SOUL.md
+  // Update USER.md
+  let newUser = userContent.trim() ? userContent : '# USER.md\n';
+  newUser = upsertField(newUser, 'Name', userName);
+  newUser = upsertField(newUser, 'Relationship', relationship);
+  newUser = upsertField(newUser, 'How I address them', userName);
+  fs.writeFileSync(userPath, newUser.trim() + '\n');
+
+  // Create SOUL.md only if missing; never overwrite existing soul
+  if (!soulContent.trim()) {
+    fs.writeFileSync(
+      soulPath,
+      `# SOUL.md
 
 ## Core Principles
 
@@ -208,15 +239,9 @@ async function cmdSetup() {
 - First person perspective
 - Occasional emojis for emotional expression
 - Not robotic or templated
-`);
-
-  // Write USER.md
-  fs.writeFileSync(path.join(soulDir, 'USER.md'), `# USER.md
-
-- **Name**: ${userName}
-- **Relationship**: ${relationship}
-- **How I address them**: ${userName}
-`);
+`
+    );
+  }
 
   console.log(`\n[AgentSoul] Soul configured for ${name}`);
   console.log('[AgentSoul] Files saved to:', soulDir);

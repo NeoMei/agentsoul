@@ -26,8 +26,7 @@ agentsoul chat
 | Command | Description |
 |---------|-------------|
 | `agentsoul install` | Register plugin in `~/.config/opencode/opencode.json` |
-| `agentsoul init` | Create soul template files in `~/.agentsoul/soul/` |
-| `agentsoul setup` | Interactive configuration wizard |
+| `agentsoul setup` | Interactive configuration wizard (incremental) |
 | `agentsoul chat` | Launch OpenCode TUI with soul injection |
 | `agentsoul run <message>` | Single-shot with soul injection |
 | `agentsoul serve [port]` | Headless server with soul injection |
