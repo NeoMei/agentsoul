@@ -23,6 +23,7 @@ agentsoul chat
 | Command | Description |
 |---------|-------------|
 | `agentsoul setup` | Interactive configuration wizard (auto-registers plugin) |
+| `agentsoul uninstall` | Remove plugin from opencode config |
 | `agentsoul chat` | Launch OpenCode TUI with soul injection |
 | `agentsoul run <message>` | Single-shot with soul injection |
 | `agentsoul serve [port]` | Headless server with soul injection |
