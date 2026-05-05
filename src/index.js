@@ -21,7 +21,6 @@ export default function AgentSoulPlugin(ctx) {
 
       if (!alreadyInjected) {
         output.system.push(soulText);
-        console.log(`[AgentSoul] Soul injected into session ${input.sessionID}`);
       }
     },
 
@@ -38,14 +37,7 @@ export default function AgentSoulPlugin(ctx) {
       }
     },
 
-    // On session error, log for debugging
-    'session.error': async (event, props) => {
-      const sessionID = props?.sessionID || event?.sessionID;
-      if (sessionID) {
-        console.log(
-          `[AgentSoul] Session ${sessionID} encountered an error, soul will be re-injected on next LLM call`
-        );
-      }
-    },
+    // On session error, soul will be re-injected automatically on next LLM call
+    'session.error': async () => {},
   };
 }
