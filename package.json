@@ -1,0 +1,38 @@
+{
+  "name": "agentsoul",
+  "version": "0.1.0",
+  "description": "Give OpenCode a soul — personality injection and long-term memory for your AI agent",
+  "main": "src/index.js",
+  "type": "module",
+  "bin": {
+    "agentsoul": "./bin/agentsoul"
+  },
+  "scripts": {
+    "postinstall": "node scripts/postinstall.js",
+    "test": "node --test test/**/*.test.js"
+  },
+  "keywords": [
+    "opencode",
+    "plugin",
+    "agent",
+    "soul",
+    "personality",
+    "memory",
+    "ai"
+  ],
+  "author": "NeoMei <xuefeng.mei@quukk.com>",
+  "files": [
+    "bin/",
+    "src/",
+    "scripts/",
+    "templates/",
+    "README.md"
+  ],
+  "license": "MIT",
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "optionalDependencies": {
+    "better-sqlite3": "^11.0.0"
+  }
+}

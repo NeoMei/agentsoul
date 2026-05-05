@@ -1,0 +1,6 @@
+#!/usr/bin/env node
+// AgentSoul CLI — 为 OpenCode 注入灵魂
+
+import { cli } from '../src/cli.js';
+
+cli(process.argv.slice(2));

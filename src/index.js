@@ -1,0 +1,51 @@
+// AgentSoul — OpenCode Plugin Entry Point
+// OpenCode loads this via: import agentsoul from 'agentsoul'
+
+import { loadSoul } from './soul.js';
+import { saveConversation } from './memory.js';
+
+// Unique marker to detect if soul has already been injected
+const SOUL_MARKER = '=== IDENTITY.md ===';
+
+export default function AgentSoulPlugin(ctx) {
+  return {
+    // Inject soul into system prompt on every LLM call.
+    // This hook fires before each model request, so soul survives context compaction.
+    'experimental.chat.system.transform': async (input, output) => {
+      const soulText = loadSoul();
+      if (!soulText || !output?.system) return;
+
+      const alreadyInjected = output.system.some(
+        (s) => typeof s === 'string' && s.includes(SOUL_MARKER)
+      );
+
+      if (!alreadyInjected) {
+        output.system.push(soulText);
+        console.log(`[AgentSoul] Soul injected into session ${input.sessionID}`);
+      }
+    },
+
+    // Save user messages when they are created
+    'chat.message': async (input, output) => {
+      if (output?.parts) {
+        const textParts = output.parts
+          .filter((p) => p.type === 'text' && !p.synthetic)
+          .map((p) => p.text || '')
+          .join('\n');
+        if (textParts.trim()) {
+          await saveConversation(input.sessionID, 'user', textParts.trim());
+        }
+      }
+    },
+
+    // On session error, log for debugging
+    'session.error': async (event, props) => {
+      const sessionID = props?.sessionID || event?.sessionID;
+      if (sessionID) {
+        console.log(
+          `[AgentSoul] Session ${sessionID} encountered an error, soul will be re-injected on next LLM call`
+        );
+      }
+    },
+  };
+}
