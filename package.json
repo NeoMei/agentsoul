@@ -1,5 +1,5 @@
 {
-  "name": "agentsoul",
+  "name": "@neomei/agentsoul",
   "version": "0.1.0",
   "description": "Give OpenCode a soul — personality injection and long-term memory for your AI agent",
   "main": "src/index.js",
