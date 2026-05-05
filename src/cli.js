@@ -36,6 +36,9 @@ export async function cli(args) {
     case 'install':
       await cmdInstall();
       break;
+    case 'uninstall':
+      await cmdUninstall();
+      break;
     case 'init':
       await cmdInit();
       break;
@@ -60,6 +63,7 @@ AgentSoul — Give OpenCode a soul
 
 Usage:
   agentsoul install          Register plugin in opencode config
+  agentsoul uninstall        Remove plugin from opencode config
   agentsoul init             Create soul template files
   agentsoul setup            Interactive configuration wizard
   agentsoul chat             Launch opencode TUI with soul injection
@@ -69,6 +73,8 @@ Usage:
 `);
   }
 }
+
+const PLUGIN_NAME = '@neomei/agentsoul';
 
 async function cmdInstall() {
   const configPath = path.join(os.homedir(), '.config', 'opencode', 'opencode.json');
@@ -84,10 +90,24 @@ async function cmdInstall() {
   }
 
   config.plugin = config.plugin || [];
-  if (!config.plugin.includes('agentsoul')) {
-    config.plugin.push('agentsoul');
+  let changed = false;
+
+  if (!config.plugin.includes(PLUGIN_NAME)) {
+    config.plugin.push(PLUGIN_NAME);
+    changed = true;
+    console.log(`[AgentSoul] Registered ${PLUGIN_NAME} in opencode config`);
+  }
+
+  // Clean up old unscoped plugin name that causes import failures
+  const oldIdx = config.plugin.indexOf('agentsoul');
+  if (oldIdx !== -1) {
+    config.plugin.splice(oldIdx, 1);
+    changed = true;
+    console.log('[AgentSoul] Removed old plugin name "agentsoul" from config');
+  }
+
+  if (changed) {
     fs.writeFileSync(configPath, JSON.stringify(config, null, 2));
-    console.log('[AgentSoul] Registered in opencode config');
   } else {
     console.log('[AgentSoul] Already registered');
   }
@@ -96,6 +116,39 @@ async function cmdInstall() {
   const soulDir = ensureSoulDir();
   console.log('[AgentSoul] Soul directory:', soulDir);
   console.log('[AgentSoul] Run "agentsoul setup" to configure your agent\'s personality');
+}
+
+async function cmdUninstall() {
+  const configPath = path.join(os.homedir(), '.config', 'opencode', 'opencode.json');
+  if (!fs.existsSync(configPath)) {
+    console.log('[AgentSoul] No opencode config found');
+    return;
+  }
+
+  let config = {};
+  try {
+    config = JSON.parse(fs.readFileSync(configPath, 'utf-8'));
+  } catch {
+    console.log('[AgentSoul] Invalid opencode config');
+    return;
+  }
+
+  const plugins = config.plugin || config.plugins || [];
+  const beforeLen = plugins.length;
+
+  const cleaned = plugins.filter(
+    (p) => p !== PLUGIN_NAME && p !== 'agentsoul'
+  );
+
+  if (config.plugin) config.plugin = cleaned;
+  if (config.plugins) config.plugins = cleaned;
+
+  if (cleaned.length < beforeLen) {
+    fs.writeFileSync(configPath, JSON.stringify(config, null, 2));
+    console.log(`[AgentSoul] Removed ${PLUGIN_NAME} from opencode config`);
+  } else {
+    console.log('[AgentSoul] Plugin not found in config');
+  }
 }
 
 async function cmdInit() {
@@ -184,7 +237,7 @@ async function cmdChat(args) {
     try {
       const cfg = JSON.parse(fs.readFileSync(configPath, 'utf-8'));
       const plugins = cfg.plugin || cfg.plugins || [];
-      pluginRegistered = plugins.includes('agentsoul');
+      pluginRegistered = plugins.includes(PLUGIN_NAME);
     } catch {}
   }
 
@@ -247,7 +300,7 @@ async function cmdServe(args) {
     try {
       const cfg = JSON.parse(fs.readFileSync(configPath, 'utf-8'));
       const plugins = cfg.plugin || cfg.plugins || [];
-      pluginRegistered = plugins.includes('agentsoul');
+      pluginRegistered = plugins.includes(PLUGIN_NAME);
     } catch {}
   }
 
