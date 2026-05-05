@@ -2,6 +2,7 @@ import fs from 'fs';
 import path from 'path';
 import os from 'os';
 import { createRequire } from 'module';
+import { execSync } from 'child_process';
 
 const AGENTSOUL_DIR = path.join(os.homedir(), '.agentsoul');
 const MEMORY_DB = path.join(AGENTSOUL_DIR, 'memory.db');
@@ -13,22 +14,30 @@ function ensureDir(dir) {
   if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
 }
 
-async function tryLoadBetterSqlite3() {
-  // Resolve better-sqlite3 from the host process (opencode) context.
-  // AgentSoul does not declare better-sqlite3 as its own dependency;
-  // it reuses the one already installed by opencode.
+function getGlobalNpmRoot() {
   try {
-    const hostEntry = process.argv[1];
-    if (hostEntry && hostEntry.endsWith('.js')) {
-      const req = createRequire(hostEntry);
-      const resolved = req.resolve('better-sqlite3');
-      return await import(resolved);
-    }
+    return execSync('npm root -g', { encoding: 'utf-8', stdio: ['pipe', 'pipe', 'ignore'] }).trim();
   } catch {
-    // Fall through
+    return null;
+  }
+}
+
+async function tryLoadBetterSqlite3() {
+  // Build a list of candidate require contexts
+  const contexts = [];
+
+  // Strategy 1: host process entry
+  if (process.argv[1]) {
+    contexts.push(process.argv[1]);
   }
 
-  // Fallback: common global opencode locations
+  // Strategy 2: global npm root
+  const globalRoot = getGlobalNpmRoot();
+  if (globalRoot) {
+    contexts.push(path.join(globalRoot, 'opencode', 'package.json'));
+  }
+
+  // Strategy 3: common global opencode locations
   const candidates = [
     path.join(os.homedir(), '.npm-global/lib/node_modules/opencode/package.json'),
     path.join(os.homedir(), '.local/lib/node_modules/opencode/package.json'),
@@ -36,12 +45,17 @@ async function tryLoadBetterSqlite3() {
     '/usr/lib/node_modules/opencode/package.json',
   ];
   for (const c of candidates) {
+    if (fs.existsSync(c)) contexts.push(c);
+  }
+
+  // Try each context, skipping any copy inside the opencode plugin cache
+  const agentsoulCache = path.join(os.homedir(), '.cache', 'opencode', 'packages', '@neomei');
+  for (const ctx of contexts) {
     try {
-      if (fs.existsSync(c)) {
-        const req = createRequire(c);
-        const resolved = req.resolve('better-sqlite3');
-        return await import(resolved);
-      }
+      const req = createRequire(ctx);
+      const resolved = req.resolve('better-sqlite3');
+      if (resolved.includes(agentsoulCache)) continue;
+      return await import(resolved);
     } catch {
       // Continue
     }
