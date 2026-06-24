@@ -7,34 +7,61 @@ import { saveConversation } from './memory.js';
 // Unique marker to detect if soul has already been injected
 const SOUL_MARKER = '=== IDENTITY.md ===';
 
+// Shared soul injection logic — used by multiple hooks for redundancy
+function injectSoul(output) {
+  const soulText = loadSoul();
+  if (!soulText || !output?.system) return false;
+
+  if (!Array.isArray(output.system)) {
+    output.system = [soulText];
+    return true;
+  }
+
+  const alreadyInjected = output.system.some(
+    (s) => typeof s === 'string' && s.includes(SOUL_MARKER)
+  );
+
+  if (!alreadyInjected) {
+    output.system.push(soulText);
+    return true;
+  }
+  return false;
+}
+
 export default function AgentSoulPlugin(ctx) {
   return {
-    // Inject soul into system prompt on every LLM call.
-    // This hook fires before each model request, so soul survives context compaction.
-    'experimental.chat.system.transform': async (input, output) => {
+    // Hook 1: session.created — inject soul at session start (most reliable)
+    'session.created': async (input, output) => {
       try {
-        const soulText = loadSoul();
-        if (!soulText || !output?.system) return;
-
-        // Defensive: ensure system is an array
-        if (!Array.isArray(output.system)) {
-          output.system = [soulText];
-          return;
-        }
-
-        const alreadyInjected = output.system.some(
-          (s) => typeof s === 'string' && s.includes(SOUL_MARKER)
-        );
-
-        if (!alreadyInjected) {
-          output.system.push(soulText);
-        }
-      } catch {
-        // Silently ignore any errors to avoid breaking TUI/serve
-      }
+        if (!output?.system) return;
+        injectSoul(output);
+      } catch {}
     },
 
-    // Save user messages when they are created
+    // Hook 2: session.compacted — re-inject after context compaction
+    'session.compacted': async (input, output) => {
+      try {
+        if (!output?.system) return;
+        injectSoul(output);
+      } catch {}
+    },
+
+    // Hook 3: experimental.chat.system.transform — fires before every LLM call
+    'experimental.chat.system.transform': async (input, output) => {
+      try {
+        injectSoul(output);
+      } catch {}
+    },
+
+    // Hook 4: session.idle — re-inject for headless mode
+    'session.idle': async (input, output) => {
+      try {
+        if (!output?.system) return;
+        injectSoul(output);
+      } catch {}
+    },
+
+    // Save assistant messages for memory
     'chat.message': async (input, output) => {
       try {
         if (!output?.parts || !Array.isArray(output.parts)) return;
@@ -45,14 +72,11 @@ export default function AgentSoulPlugin(ctx) {
           .join('\n');
 
         if (textParts.trim()) {
-          await saveConversation(input.sessionID, 'user', textParts.trim());
+          await saveConversation(input.sessionID, 'assistant', textParts.trim());
         }
-      } catch {
-        // Silently ignore to avoid breaking TUI/serve output
-      }
+      } catch {}
     },
 
-    // On session error, soul will be re-injected automatically on next LLM call
     'session.error': async () => {},
   };
 }
